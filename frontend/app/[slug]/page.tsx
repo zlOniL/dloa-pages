@@ -34,10 +34,10 @@ export default async function SlugPage({ params }: { params: { slug: string } })
         .map((section) => {
           const Component = sectionsMap[section.type];
           if (!Component) return null;
-          const overrideColors = (section.content as any)?._colors ?? {};
-          const overrideStyle: React.CSSProperties = {};
-          if (overrideColors.primary)   (overrideStyle as any)['--color-primary']   = overrideColors.primary;
-          if (overrideColors.secondary) (overrideStyle as any)['--color-secondary'] = overrideColors.secondary;
+          const overrideColors = (section.content as Record<string, Record<string, string>>)?._colors ?? {};
+          const overrideStyle: React.CSSProperties & Record<string, string> = {};
+          if (overrideColors.primary)   overrideStyle['--color-primary']   = overrideColors.primary;
+          if (overrideColors.secondary) overrideStyle['--color-secondary'] = overrideColors.secondary;
           const content = section.type === 'hero'
             ? { ...section.content, _navItems: navItems, logoUrl: logoUrl || undefined }
             : section.content;
