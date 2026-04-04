@@ -42,8 +42,8 @@ Thumbs.db
 next-env.d.ts
 
 # Lovable source templates (reference only, not deployed)
-template_danone/
-remix-of-remix-of-visual-landing-page-website-template/
+/template_danone/
+/remix-of-remix-of-visual-landing-page-website-template/
 
 # Misc docs
 add_templates.md
