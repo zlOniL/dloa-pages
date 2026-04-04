@@ -46,7 +46,7 @@ export default async function SitePage({ params }: { params: { slug: string; sit
             ? <div key={section.id} style={overrideStyle}>{inner}</div>
             : inner;
         })}
-      <Footer footerLogoUrl={footerLogoUrl} footerLinks={footerLinks} />
+      <Footer footerLogoUrl={footerLogoUrl} navItems={navItems} footerLinks={footerLinks} />
     </main>
   );
 }

@@ -1,21 +1,14 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { getTemplate } from '@/components/templates/registry';
-import type { SectionSchema, SimpleField } from '@/components/templates/template_danone/schemas';
+import { getTemplate, type NavItem } from '@/components/templates/registry';
+import type { SectionSchema, SimpleField, ProductsField, ProductEntry } from '@/components/templates/types';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 /* ── Types ── */
 interface Section { id: string; type: string; enabled: boolean; content: any; order: number; }
 interface Site { id: string; slug: string; siteSlug: string; companyName: string; clientId: string; templateKey?: string; client: { id: string; slug: string } | null; designTokens: any; sections: Section[]; }
-
-const PRODUCT_DEFAULTS = [
-  { id: 'aptanutri',  label: 'Aptanutri',  sublabel: 'Aptanutri Premium, Profutura e Soja', color: '#71bff3', imageUrl: '' },
-  { id: 'fortini',    label: 'Fortini',    sublabel: 'Fortini Complete e Plus',              color: '#602A68', imageUrl: '' },
-  { id: 'nutridrink', label: 'Nutridrink', sublabel: 'Nutridrink Protein e Protein Sênior',  color: '#c55871', imageUrl: '' },
-  { id: 'neoforte',   label: 'Neoforte',   sublabel: 'Neoforte',                             color: '#FF6B7A', imageUrl: '' },
-];
 
 /* ── SiteEditor ── */
 export function SiteEditor({ siteId }: { siteId: string }) {
@@ -90,7 +83,7 @@ export function SiteEditor({ siteId }: { siteId: string }) {
 
   if (!site) return <div className="p-8 text-gray-500">Carregando...</div>;
 
-  const { schemas } = getTemplate(site.templateKey);
+  const { schemas, defaultNavItems, defaultFooterLinks, hasFooterLinks, footerLinksLabel, defaultLogoSrc, defaultFooterLogoSrc } = getTemplate(site.templateKey);
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
@@ -152,7 +145,7 @@ export function SiteEditor({ siteId }: { siteId: string }) {
                 <TokenField label="Fonte"                           field="fontFamily"     tokens={tokens} onChange={setTokens} />
                 <ImageField
                   label="Logo Nav"
-                  defaultSrc="/assets/header-logo.svg"
+                  defaultSrc={defaultLogoSrc}
                   value={tokens.logoUrl ?? ''}
                   siteId={siteId}
                   onChange={(url) => setTokens({ ...tokens, logoUrl: url })}
@@ -160,7 +153,7 @@ export function SiteEditor({ siteId }: { siteId: string }) {
                 />
                 <ImageField
                   label="Logo Rodapé"
-                  defaultSrc="/assets/logo-meu-cupom-danone.webp"
+                  defaultSrc={defaultFooterLogoSrc}
                   value={tokens.footerLogoUrl ?? ''}
                   siteId={siteId}
                   onChange={(url) => setTokens({ ...tokens, footerLogoUrl: url })}
@@ -205,19 +198,23 @@ export function SiteEditor({ siteId }: { siteId: string }) {
             <NavLinksPanel
               label="🔗 Menu de navegação"
               tokenKey="navItems"
+              defaultItems={defaultNavItems}
               tokens={tokens}
               saving={saving === 'tokens'}
               onSave={saveTokens}
             />
 
-            {/* Rodapé */}
-            <NavLinksPanel
-              label="🔗 Links do rodapé"
-              tokenKey="footerLinks"
-              tokens={tokens}
-              saving={saving === 'tokens'}
-              onSave={saveTokens}
-            />
+            {/* Rodapé — só para templates que usam footerLinks */}
+            {hasFooterLinks && (
+              <NavLinksPanel
+                label={footerLinksLabel}
+                tokenKey="footerLinks"
+                defaultItems={defaultFooterLinks}
+                tokens={tokens}
+                saving={saving === 'tokens'}
+                onSave={saveTokens}
+              />
+            )}
 
           </div>
         </div>}
@@ -409,7 +406,7 @@ function SectionRow({ section, saving, siteId, schemas, onToggle, onSave }: {
                 <div key={fieldDef.key}>
                   <label className="block text-xs font-medium text-gray-500 mb-1">{fieldDef.label}</label>
                   {fieldDef.type === 'products-list' ? (
-                    <ProductsEditor value={fields[fieldDef.key]} siteId={siteId} onChange={(val) => setField(fieldDef.key, val)} />
+                    <ProductsEditor fieldDef={fieldDef as ProductsField} value={fields[fieldDef.key]} siteId={siteId} onChange={(val) => setField(fieldDef.key, val)} />
                   ) : fieldDef.type === 'array' ? (
                     <ArrayEditor value={fields[fieldDef.key] ?? []} itemFields={fieldDef.itemFields} onChange={(val) => setField(fieldDef.key, val)} />
                   ) : fieldDef.type === 'textarea' ? (
@@ -555,13 +552,13 @@ function VideoField({ label, value, siteId, onChange, onClear }: {
 }
 
 /* ── ProductsEditor ── */
-type ProductEntry = { id: string; label: string; sublabel: string; color: string; imageUrl: string };
-
-function ProductsEditor({ value, siteId, onChange }: {
-  value?: ProductEntry[]; siteId: string;
+function ProductsEditor({ fieldDef, value, siteId, onChange }: {
+  fieldDef: ProductsField; value?: ProductEntry[]; siteId: string;
   onChange: (val: ProductEntry[]) => void;
 }) {
-  const merged: ProductEntry[] = PRODUCT_DEFAULTS.map((def) => {
+  const defaults = fieldDef.productDefaults;
+
+  const merged: ProductEntry[] = defaults.map((def) => {
     const ov = value?.find((p) => p.id === def.id);
     return { ...def, ...ov };
   });
@@ -573,93 +570,64 @@ function ProductsEditor({ value, siteId, onChange }: {
 
   return (
     <div className="space-y-3">
-      {merged.map((product) => (
-        <div key={product.id} className="border border-gray-200 rounded-lg overflow-hidden">
-          {/* header with color */}
-          <div className="flex items-center gap-3 px-3 py-2" style={{ backgroundColor: product.color + '22' }}>
-            <input
-              type="color"
-              value={product.color}
-              onChange={(e) => updateProduct(product.id, 'color', e.target.value)}
-              className="w-7 h-7 rounded border border-gray-200 cursor-pointer p-0.5 shrink-0"
-              title="Cor de fundo"
-            />
-            <span className="text-xs font-bold text-gray-700 flex-1">Item {PRODUCT_DEFAULTS.findIndex(d => d.id === product.id) + 1}</span>
-            {product.color !== PRODUCT_DEFAULTS.find(d => d.id === product.id)!.color && (
-              <button
-                onClick={() => updateProduct(product.id, 'color', PRODUCT_DEFAULTS.find(d => d.id === product.id)!.color)}
-                className="text-xs text-gray-400 hover:text-red-500"
-                title="Restaurar cor padrão"
-              >
-                ↺
-              </button>
-            )}
-          </div>
-
-          <div className="p-3 space-y-2">
-            {/* label */}
-            <div>
-              <label className="block text-xs text-gray-500 mb-0.5">Título</label>
+      {merged.map((product, idx) => {
+        const def = defaults.find(d => d.id === product.id)!;
+        return (
+          <div key={product.id} className="border border-gray-200 rounded-lg overflow-hidden">
+            <div className="flex items-center gap-3 px-3 py-2" style={{ backgroundColor: product.color + '22' }}>
               <input
-                type="text"
-                value={product.label}
-                onChange={(e) => updateProduct(product.id, 'label', e.target.value)}
-                className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                type="color"
+                value={product.color}
+                onChange={(e) => updateProduct(product.id, 'color', e.target.value)}
+                className="w-7 h-7 rounded border border-gray-200 cursor-pointer p-0.5 shrink-0"
+                title="Cor de fundo"
+              />
+              <span className="text-xs font-bold text-gray-700 flex-1">Item {idx + 1}</span>
+              {product.color !== def.color && (
+                <button
+                  onClick={() => updateProduct(product.id, 'color', def.color)}
+                  className="text-xs text-gray-400 hover:text-red-500"
+                  title="Restaurar cor padrão"
+                >↺</button>
+              )}
+            </div>
+            <div className="p-3 space-y-2">
+              <div>
+                <label className="block text-xs text-gray-500 mb-0.5">Título</label>
+                <input type="text" value={product.label} onChange={(e) => updateProduct(product.id, 'label', e.target.value)} className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-0.5">Subtítulo</label>
+                <input type="text" value={product.sublabel} onChange={(e) => updateProduct(product.id, 'sublabel', e.target.value)} className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
+              </div>
+              <ImageField
+                label="Imagem do produto"
+                defaultSrc={def.defaultImageSrc ?? ''}
+                value={product.imageUrl}
+                siteId={siteId}
+                onChange={(url) => updateProduct(product.id, 'imageUrl', url)}
+                onClear={() => updateProduct(product.id, 'imageUrl', '')}
               />
             </div>
-            {/* sublabel */}
-            <div>
-              <label className="block text-xs text-gray-500 mb-0.5">Subtítulo</label>
-              <input
-                type="text"
-                value={product.sublabel}
-                onChange={(e) => updateProduct(product.id, 'sublabel', e.target.value)}
-                className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
-              />
-            </div>
-            {/* image */}
-            <ImageField
-              label="Imagem do produto"
-              defaultSrc={
-                product.id === 'aptanutri'  ? '/assets/extracted-aptanutri.webp'
-                : product.id === 'fortini'    ? '/assets/extracted-fortini.svg'
-                : product.id === 'nutridrink' ? '/assets/nutridrink-potes.svg'
-                : '/assets/neoforte-potes.svg'
-              }
-              value={product.imageUrl}
-              siteId={siteId}
-              onChange={(url) => updateProduct(product.id, 'imageUrl', url)}
-              onClear={() => updateProduct(product.id, 'imageUrl', '')}
-            />
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
 
 /* ── NavLinksPanel ── */
-const DEFAULT_NAV_ITEMS  = [
-  { label: 'Início', href: '' }, { label: 'Produtos', href: 'produtos' },
-  { label: 'Sobre nós', href: 'sobre' }, { label: 'Como funciona', href: 'como-funciona' },
-  { label: 'Dúvidas', href: 'duvidas' },
-];
-const DEFAULT_FOOTER_LINKS = [
-  { label: 'Início', href: '' }, { label: 'Sobre nós', href: 'sobre' },
-  { label: 'Como funciona', href: 'como-funciona' }, { label: 'Dúvidas', href: 'duvidas' },
-];
-
-function NavLinksPanel({ label, tokenKey, tokens, saving, onSave }: {
+function NavLinksPanel({ label, tokenKey, defaultItems, tokens, saving, onSave }: {
   label: string; tokenKey: 'navItems' | 'footerLinks';
+  defaultItems: NavItem[];
   tokens: any; saving: boolean; onSave: (extra: any) => void;
 }) {
-  const defaults = tokenKey === 'navItems' ? DEFAULT_NAV_ITEMS : DEFAULT_FOOTER_LINKS;
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState<{ label: string; href: string }[]>(
-    () => tokens[tokenKey] ?? defaults
+  const [items, setItems] = useState<NavItem[]>(
+    () => tokens[tokenKey] ?? defaultItems
   );
 
-  useEffect(() => { setItems(tokens[tokenKey] ?? defaults); }, [tokens, tokenKey]);
+  useEffect(() => { setItems(tokens[tokenKey] ?? defaultItems); }, [tokens, tokenKey]);
 
   const update = (i: number, field: 'label' | 'href', val: string) => {
     const next = [...items];
@@ -680,9 +648,18 @@ function NavLinksPanel({ label, tokenKey, tokens, saving, onSave }: {
 
       {open && (
         <div className="p-4 space-y-2">
-          <p className="text-xs text-gray-400 mb-3">
-            Link: use o ID da seção (ex: <code>produtos</code>) para rolar até ela, ou uma URL completa (ex: <code>https://...</code>).
-          </p>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs text-gray-400">
+              Use o ID da seção (ex: <code>portfolio</code>) para rolar, ou URL completa.
+            </p>
+            <button
+              onClick={() => setItems([...defaultItems])}
+              className="text-xs text-amber-600 hover:text-amber-800 font-medium shrink-0 ml-2"
+              title="Restaurar links padrão do template"
+            >
+              ↺ Padrão
+            </button>
+          </div>
           {items.map((item, i) => (
             <div key={i} className="flex items-center gap-2">
               <input

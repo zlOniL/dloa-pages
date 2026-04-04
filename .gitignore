@@ -18,6 +18,14 @@ uploads/
 backend/src/generated/
 backend/generated/
 
+# Compiled files outside dist/ (local nest build artifacts)
+backend/prisma.config.js
+backend/prisma.config.js.map
+backend/prisma.config.d.ts
+backend/prisma/seed.js
+backend/prisma/seed.js.map
+backend/prisma/seed.d.ts
+
 # Logs
 *.log
 npm-debug.log*
