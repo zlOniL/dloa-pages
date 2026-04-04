@@ -64,8 +64,8 @@ export function ClientsScreen() {
       setForm({ name: '', cnpj: '', slug: '' });
       setShowForm(false);
       load();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro desconhecido');
     } finally {
       setSaving(false);
     }

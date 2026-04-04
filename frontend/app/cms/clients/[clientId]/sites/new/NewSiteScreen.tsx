@@ -48,8 +48,8 @@ export function NewSiteScreen({ clientId }: { clientId: string }) {
       }
       const site = await res.json();
       router.push(`/cms/sites/${site.id}`);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro desconhecido');
       setSaving(false);
     }
   };
