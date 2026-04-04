@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { getTemplate } from '@/components/templates/registry';
-import type { SectionSchema, FieldDef, SimpleField } from '@/components/templates/template_danone/schemas';
+import type { SectionSchema, SimpleField } from '@/components/templates/template_danone/schemas';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
