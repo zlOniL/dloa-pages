@@ -18,7 +18,6 @@ const DEFAULT_ITEMS: ServiceItem[] = [
 ];
 
 const ROTATIONS = ['rotate-2', '-rotate-1', 'rotate-1', '-rotate-2', 'rotate-3', '-rotate-1'];
-const SWAYS     = ['photo-sway-1', 'photo-sway-2', 'photo-sway-3'];
 
 export function ServicesSection({ content }: { content: ServicesContent }) {
   const {
@@ -61,7 +60,7 @@ export function ServicesSection({ content }: { content: ServicesContent }) {
     </div>
   );
 
-  const PhotoCard = ({ item, index, globalIndex }: { item: ServiceItem; index: number; globalIndex: number }) => (
+  const PhotoCard = ({ item, globalIndex }: { item: ServiceItem; globalIndex: number }) => (
     <div
       className={`transform transition-all duration-700 relative ${ROTATIONS[globalIndex % ROTATIONS.length]}`}
       style={{ transform: hovered === globalIndex ? 'scale(1.05) translateY(-8px)' : '' }}
@@ -135,7 +134,7 @@ export function ServicesSection({ content }: { content: ServicesContent }) {
             <Anchor side="right" />
             <div className="flex flex-wrap justify-center gap-4 sm:gap-8 lg:gap-16 pt-20 overflow-visible">
               {row1.map((item, i) => (
-                <PhotoCard key={i} item={item} index={i} globalIndex={i} />
+                <PhotoCard key={i} item={item} globalIndex={i} />
               ))}
             </div>
           </div>
@@ -147,7 +146,7 @@ export function ServicesSection({ content }: { content: ServicesContent }) {
             <Anchor side="right" />
             <div className="flex flex-wrap justify-center gap-4 sm:gap-8 lg:gap-16 pt-20 overflow-visible">
               {row2.map((item, i) => (
-                <PhotoCard key={i} item={item} index={i} globalIndex={i + 3} />
+                <PhotoCard key={i} item={item} globalIndex={i + 3} />
               ))}
             </div>
           </div>

@@ -11,7 +11,7 @@ interface HeroContent {
   logoUrl?: string;
 }
 
-export function HeroBanner({ content, slug }: { content: HeroContent; slug?: string }) {
+export function HeroBanner({ content }: { content: HeroContent; slug?: string }) {
   const {
     line1    = 'AI FILM',
     line2    = 'PRODUCTION',
