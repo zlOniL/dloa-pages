@@ -45,7 +45,9 @@ model Site {
   clientId     String?
   templateId   String?
   companyName  String
+  type         String    @default("template")
   designTokens Json
+  customHtml   String?
   createdAt    DateTime  @default(now())
   sections     Section[]
   assets       Asset[]

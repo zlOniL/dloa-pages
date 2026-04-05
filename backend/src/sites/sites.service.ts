@@ -110,9 +110,31 @@ export class SitesService {
 
   // ── Create site ───────────────────────────────────────────────────────────
 
-  async createSite(data: { clientId: string; templateId: string; siteSlug: string; companyName: string }) {
+  async createSite(data: { clientId: string; templateId?: string; siteSlug: string; companyName: string; type?: string }) {
     const client = await this.prisma.client.findUnique({ where: { id: data.clientId } });
     if (!client) throw new NotFoundException(`Cliente "${data.clientId}" não encontrado`);
+
+    const siteType = data.type === 'html' ? 'html' : 'template';
+    const slug = `${client.slug}-${data.siteSlug}`;
+
+    if (siteType === 'html') {
+      const site = await this.prisma.site.create({
+        data: {
+          slug,
+          siteSlug: data.siteSlug,
+          clientId: data.clientId,
+          companyName: data.companyName,
+          type: 'html',
+          customHtml: '',
+          designTokens: {},
+        },
+        include: { sections: { orderBy: { order: 'asc' } } },
+      });
+      await this.cache.del(`sites:client:${data.clientId}`);
+      return site;
+    }
+
+    if (!data.templateId) throw new BadRequestException('templateId é obrigatório para sites do tipo template');
 
     // Use raw SQL to include the `key` field (Prisma client may be stale)
     type TemplateRow = { id: string; key: string; name: string; defaultConfig: any };
@@ -129,8 +151,6 @@ export class SitesService {
     const structure = getTemplateStructure(template.key);
     if (!structure) throw new BadRequestException(`Estrutura do template "${template.key}" não encontrada`);
 
-    const slug = `${client.slug}-${data.siteSlug}`;
-
     const site = await this.prisma.site.create({
       data: {
         slug,
@@ -138,6 +158,7 @@ export class SitesService {
         clientId: data.clientId,
         templateId: data.templateId,
         companyName: data.companyName,
+        type: 'template',
         designTokens: template.defaultConfig,
         sections: { create: structure.sections },
       },
@@ -176,7 +197,7 @@ export class SitesService {
 
   // ── Update site (by id) ───────────────────────────────────────────────────
 
-  async updateSiteById(id: string, body: { designTokens?: any; companyName?: string }) {
+  async updateSiteById(id: string, body: { designTokens?: any; companyName?: string; customHtml?: string }) {
     const site = await this.prisma.site.findUnique({ where: { id } });
     if (!site) throw new NotFoundException(`Site "${id}" não encontrado`);
     return this.prisma.site.update({
@@ -184,6 +205,7 @@ export class SitesService {
       data: {
         ...(body.companyName && { companyName: body.companyName }),
         ...(body.designTokens && { designTokens: body.designTokens }),
+        ...(body.customHtml !== undefined && { customHtml: body.customHtml }),
       },
     });
   }

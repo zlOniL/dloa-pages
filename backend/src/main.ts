@@ -3,9 +3,11 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { join } from 'path';
 import * as fs from 'fs';
+import { json } from 'express';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false });
+  app.use(json({ limit: '10mb' }));
 
   // Uploads directory: env var takes precedence, falls back to ./uploads
   const uploadsDir = process.env.UPLOADS_DIR ?? join(process.cwd(), 'uploads');

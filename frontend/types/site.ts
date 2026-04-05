@@ -24,7 +24,9 @@ export interface Site {
   slug: string;
   siteSlug?: string;
   companyName: string;
+  type: 'template' | 'html';
   templateKey?: string;
+  customHtml?: string;
   designTokens: DesignTokens;
   sections: Section[];
   assets: any[];

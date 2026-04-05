@@ -8,13 +8,14 @@ const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 /* ── Types ── */
 interface Section { id: string; type: string; enabled: boolean; content: any; order: number; }
-interface Site { id: string; slug: string; siteSlug: string; companyName: string; clientId: string; templateKey?: string; client: { id: string; slug: string } | null; designTokens: any; sections: Section[]; }
+interface Site { id: string; slug: string; siteSlug: string; companyName: string; clientId: string; type: 'template' | 'html'; templateKey?: string; customHtml?: string; client: { id: string; slug: string } | null; designTokens: any; sections: Section[]; }
 
 /* ── SiteEditor ── */
 export function SiteEditor({ siteId }: { siteId: string }) {
   const [site, setSite]         = useState<Site | null>(null);
   const [tokens, setTokens]     = useState<any>({});
   const [sections, setSections] = useState<Section[]>([]);
+  const [customHtml, setCustomHtml] = useState('');
   const [saving, setSaving]     = useState<string | null>(null);
   const [message, setMessage]   = useState('');
   const [previewKey, setPreviewKey] = useState(0);
@@ -29,6 +30,7 @@ export function SiteEditor({ siteId }: { siteId: string }) {
     setSite(data);
     setTokens({ ...data.designTokens });
     setSections([...data.sections].sort((a, b) => a.order - b.order));
+    setCustomHtml(data.customHtml ?? '');
   };
 
   useEffect(() => { load(); }, [siteId]);
@@ -81,7 +83,106 @@ export function SiteEditor({ siteId }: { siteId: string }) {
     reloadPreview();
   };
 
+  const saveHtml = async () => {
+    setSaving('html');
+    await fetch(`${API}/sites/by-id/${siteId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customHtml }),
+    });
+    setSaving(null);
+    flash('✅ HTML salvo!');
+    reloadPreview();
+  };
+
   if (!site) return <div className="p-8 text-gray-500">Carregando...</div>;
+
+  if (site.type === 'html') {
+    return (
+      <div className="min-h-screen bg-gray-100 flex flex-col">
+        {/* Header */}
+        <div className="bg-white border-b px-6 py-4 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3">
+            <Link href={`/cms/clients/${site.clientId}`} className="text-gray-400 hover:text-gray-600 text-sm">← Voltar</Link>
+            <span className="text-gray-300">/</span>
+            <h1 className="text-base font-semibold text-gray-800">{site.companyName}</h1>
+            <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded font-mono">HTML</span>
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              title={sidebarOpen ? 'Minimizar painel' : 'Expandir painel'}
+              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 border border-gray-200 rounded px-2 py-1 hover:bg-gray-50 transition"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+              {sidebarOpen ? 'Ocultar painel' : 'Mostrar painel'}
+            </button>
+          </div>
+          <a
+            href={`/${site.client?.slug}/${site.siteSlug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm bg-gray-800 text-white px-3 py-1.5 rounded hover:bg-gray-700 transition"
+          >
+            Abrir em nova aba →
+          </a>
+        </div>
+
+        {/* Flash */}
+        {message && (
+          <div className="fixed top-4 right-4 bg-white border border-gray-200 shadow-lg rounded-lg px-4 py-3 text-sm z-50">
+            {message}
+          </div>
+        )}
+
+        {/* Two-column layout */}
+        <div className="flex flex-1 overflow-hidden">
+          {/* Left — HTML editor */}
+          {sidebarOpen && <div className="w-[520px] shrink-0 flex flex-col border-r bg-white">
+            <div className="px-5 py-3 border-b bg-gray-50 flex items-center justify-between">
+              <div>
+                <h2 className="font-semibold text-gray-800 text-sm">Código HTML</h2>
+                <p className="text-xs text-gray-400 mt-0.5">Cole aqui o HTML completo da página</p>
+              </div>
+            </div>
+            <textarea
+              className="flex-1 w-full p-4 font-mono text-xs text-gray-800 resize-none focus:outline-none"
+              placeholder="<!DOCTYPE html>&#10;<html>&#10;  ...&#10;</html>"
+              value={customHtml}
+              onChange={(e) => setCustomHtml(e.target.value)}
+              spellCheck={false}
+            />
+            <div className="p-4 border-t">
+              <button
+                onClick={saveHtml}
+                disabled={saving === 'html'}
+                className="w-full bg-gray-800 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition"
+              >
+                {saving === 'html' ? 'Salvando...' : 'Salvar alterações'}
+              </button>
+            </div>
+          </div>}
+
+          {/* Right — iframe preview */}
+          <div className="flex-1 flex flex-col bg-gray-200">
+            <div className="px-4 py-2 bg-white border-b flex items-center gap-2">
+              <span className="text-xs text-gray-500 font-mono flex-1 truncate">Preview: /{site.client?.slug}/{site.siteSlug}</span>
+              <button
+                onClick={() => reloadPreview(0)}
+                className="text-xs text-gray-500 hover:text-gray-800 transition px-2 py-1 rounded hover:bg-gray-100"
+              >
+                ↺ Recarregar
+              </button>
+            </div>
+            <iframe
+              key={previewKey}
+              src={`/${site.client?.slug}/${site.siteSlug}`}
+              className="flex-1 w-full border-0"
+              title="Preview do site"
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const { schemas, defaultNavItems, defaultFooterLinks, hasFooterLinks, footerLinksLabel, defaultLogoSrc, defaultFooterLogoSrc } = getTemplate(site.templateKey);
 

@@ -33,14 +33,19 @@ export function NewSiteScreen({ clientId }: { clientId: string }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selected) { setError('Selecione um template'); return; }
+    if (!selected) { setError('Selecione um template ou HTML Personalizado'); return; }
     setSaving(true);
     setError('');
     try {
+      const isHtml = selected === '__html__';
       const res = await fetch(`${API}/sites`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clientId, templateId: selected, siteSlug, companyName }),
+        body: JSON.stringify(
+          isHtml
+            ? { clientId, siteSlug, companyName, type: 'html' }
+            : { clientId, templateId: selected, siteSlug, companyName, type: 'template' },
+        ),
       });
       if (!res.ok) {
         const d = await res.json();
@@ -92,38 +97,59 @@ export function NewSiteScreen({ clientId }: { clientId: string }) {
             </div>
           </div>
 
-          {/* Template selection */}
+          {/* Template / HTML selection */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-            <h2 className="text-sm font-semibold text-gray-700 mb-3">Selecione o template</h2>
-            {templates.length === 0 ? (
-              <p className="text-sm text-gray-400">Nenhum template disponível para este cliente.</p>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {templates.map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => setSelected(t.id)}
-                    className={`text-left border-2 rounded-xl p-4 transition ${
-                      selected === t.id
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300 bg-white'
-                    }`}
-                  >
-                    {t.previewUrl ? (
-                      <img src={t.previewUrl} alt={t.name} className="w-full h-28 object-cover rounded-lg mb-3 bg-gray-100" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                    ) : (
-                      <div className="w-full h-28 rounded-lg mb-3 bg-gray-100 flex items-center justify-center text-gray-300 text-xs">Sem preview</div>
-                    )}
-                    <p className="text-sm font-semibold text-gray-800">{t.name}</p>
-                    <p className="text-xs text-gray-400 font-mono mt-0.5">{t.key}</p>
-                    {selected === t.id && (
-                      <span className="mt-2 inline-block text-xs font-medium text-blue-600">✓ Selecionado</span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
+            <h2 className="text-sm font-semibold text-gray-700 mb-3">Selecione o tipo de site</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* HTML Personalizado — always first */}
+              <button
+                type="button"
+                onClick={() => setSelected('__html__')}
+                className={`text-left border-2 rounded-xl p-4 transition ${
+                  selected === '__html__'
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                }`}
+              >
+                <div className="w-full h-28 rounded-lg mb-3 bg-gray-900 flex items-center justify-center text-gray-300 text-3xl font-mono select-none">
+                  {'</>'}
+                </div>
+                <p className="text-sm font-semibold text-gray-800">HTML Personalizado</p>
+                <p className="text-xs text-gray-400 mt-0.5">Cole seu próprio código HTML</p>
+                {selected === '__html__' && (
+                  <span className="mt-2 inline-block text-xs font-medium text-blue-600">✓ Selecionado</span>
+                )}
+              </button>
+
+              {/* Template cards */}
+              {templates.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setSelected(t.id)}
+                  className={`text-left border-2 rounded-xl p-4 transition ${
+                    selected === t.id
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300 bg-white'
+                  }`}
+                >
+                  {t.previewUrl ? (
+                    <img src={t.previewUrl} alt={t.name} className="w-full h-28 object-cover rounded-lg mb-3 bg-gray-100" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                  ) : (
+                    <div className="w-full h-28 rounded-lg mb-3 bg-gray-100 flex items-center justify-center text-gray-300 text-xs">Sem preview</div>
+                  )}
+                  <p className="text-sm font-semibold text-gray-800">{t.name}</p>
+                  <p className="text-xs text-gray-400 font-mono mt-0.5">{t.key}</p>
+                  {selected === t.id && (
+                    <span className="mt-2 inline-block text-xs font-medium text-blue-600">✓ Selecionado</span>
+                  )}
+                </button>
+              ))}
+
+              {templates.length === 0 && selected !== '__html__' && (
+                <p className="text-sm text-gray-400 col-span-2">Nenhum template disponível para este cliente.</p>
+              )}
+            </div>
           </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}

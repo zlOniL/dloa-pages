@@ -67,7 +67,7 @@ export class SitesController {
   }
 
   @Post('sites')
-  createSite(@Body() body: { clientId: string; templateId: string; siteSlug: string; companyName: string }) {
+  createSite(@Body() body: { clientId: string; templateId?: string; siteSlug: string; companyName: string; type?: string }) {
     return this.sitesService.createSite(body);
   }
 

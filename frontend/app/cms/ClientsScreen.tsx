@@ -55,7 +55,7 @@ export function ClientsScreen() {
       const res = await fetch(`${API}/clients`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, cnpj: form.cnpj.replace(/\D/g, '') }),
       });
       if (!res.ok) {
         const d = await res.json();
@@ -81,6 +81,21 @@ export function ClientsScreen() {
 
   const slugify = (str: string) =>
     str.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-');
+
+  const maskCnpj = (value: string) => {
+    const d = value.replace(/\D/g, '').slice(0, 14);
+    return d
+      .replace(/^(\d{2})(\d)/, '$1.$2')
+      .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+      .replace(/\.(\d{3})(\d)/, '.$1/$2')
+      .replace(/(\d{4})(\d)/, '$1-$2');
+  };
+
+  const formatCnpj = (cnpj: string) => {
+    const d = cnpj.replace(/\D/g, '');
+    if (d.length !== 14) return cnpj;
+    return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
+  };
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -137,9 +152,10 @@ export function ClientsScreen() {
                   <input
                     required
                     value={form.cnpj}
-                    onChange={(e) => setForm({ ...form, cnpj: e.target.value })}
-                    className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm mt-0.5"
+                    onChange={(e) => setForm({ ...form, cnpj: maskCnpj(e.target.value) })}
+                    className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm mt-0.5 font-mono"
                     placeholder="00.000.000/0001-00"
+                    maxLength={18}
                   />
                 </div>
                 <div>
@@ -185,7 +201,7 @@ export function ClientsScreen() {
                 {clients.map((c) => (
                   <tr key={c.id} className="hover:bg-gray-50">
                     <td className="px-5 py-3 font-medium text-gray-800">{c.name}</td>
-                    <td className="px-5 py-3 text-gray-500 font-mono text-xs">{c.cnpj}</td>
+                    <td className="px-5 py-3 text-gray-500 font-mono text-xs">{formatCnpj(c.cnpj)}</td>
                     <td className="px-5 py-3 text-gray-400 font-mono text-xs">{c.slug}</td>
                     <td className="px-5 py-3 text-center">
                       <span className="bg-blue-50 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full">{c._count.sites}</span>

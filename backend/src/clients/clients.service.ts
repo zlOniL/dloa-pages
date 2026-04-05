@@ -1,21 +1,11 @@
-import { Injectable, NotFoundException, ConflictException, Inject } from '@nestjs/common';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
-
-const CACHE_TTL = 3600_000;
 
 @Injectable()
 export class ClientsService {
-  constructor(
-    private readonly prisma: PrismaService,
-    @Inject(CACHE_MANAGER) private cache: any,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async findAll(search?: string, page = 1, limit = 10) {
-    const cacheKey = `clients:${search ?? ''}:${page}:${limit}`;
-    const cached = await this.cache.get(cacheKey);
-    if (cached) return cached;
-
     const where = search
       ? { OR: [{ name: { contains: search, mode: 'insensitive' as const } }, { cnpj: { contains: search } }] }
       : {};
@@ -31,9 +21,7 @@ export class ClientsService {
       this.prisma.client.count({ where }),
     ]);
 
-    const result = { items, total, page, limit, pages: Math.ceil(total / limit) };
-    await this.cache.set(cacheKey, result, CACHE_TTL);
-    return result;
+    return { items, total, page, limit, pages: Math.ceil(total / limit) };
   }
 
   async create(data: { name: string; cnpj: string; slug: string }) {
@@ -42,9 +30,7 @@ export class ClientsService {
     });
     if (exists) throw new ConflictException('CNPJ ou slug já cadastrado');
 
-    const client = await this.prisma.client.create({ data });
-    await this.cache.reset?.();
-    return client;
+    return this.prisma.client.create({ data });
   }
 
   async delete(id: string) {
@@ -54,7 +40,6 @@ export class ClientsService {
     await this.prisma.site.deleteMany({ where: { clientId: id } });
     await this.prisma.clientTemplate.deleteMany({ where: { clientId: id } });
     await this.prisma.client.delete({ where: { id } });
-    await this.cache.reset?.();
     return { deleted: true };
   }
 }
